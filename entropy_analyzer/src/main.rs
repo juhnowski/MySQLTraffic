@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 #[command(author, version, about = "Глубокий пакетный анализ энтропии Шеннона для сырых данных")]
 struct Args {
     /// Путь к каталогу с .raw файлами
-    #[arg(short, long, default_value = "mariadb_bench_blocks/")]
+    #[arg(short, long, default_value = "mysql_bench_blocks/")]
     dir: String,
 
     /// Размер скользящего окна в байтах для локального анализа
