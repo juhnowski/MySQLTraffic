@@ -3,13 +3,16 @@ import shutil
 import mysql.connector
 
 OUTPUT_DIR = "./mysql_bench_blocks"
-MSL_DATA_DIR = "./mysql_data/mysql_bench" # Путь к файлам нашей базы данных внутри mysql_data
+MSL_DATA_DIR = os.path.join(os.environ.get("MSL_DIR", "./mysql_data"), "mysql_bench")
+
 
 DB_CONFIG = {
     "user": "root",
     "host": "127.0.0.1",
-    "port": 3306
+    "port": 3307
 }
+
+mysql_socket = os.environ.get("MSL_SOCKET", "/tmp/mysql.sock")
 
 SCENARIOS = {
     "1_duplicates": {
@@ -85,7 +88,12 @@ SCENARIOS = {
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = mysql.connector.connect(
+    user="root",
+    password="",  # Мы инициализировали через --initialize-insecure
+    unix_socket=mysql_socket, # КРИТИЧНО: подключаемся через локальный сокет, а не порт
+    database="sys" # Или ваша целевая база данных
+)
     cursor = conn.cursor()
     
     cursor.execute("CREATE DATABASE IF NOT EXISTS mysql_bench;")
@@ -93,7 +101,7 @@ def main():
     
     for name, config in SCENARIOS.items():
         print(f"\n--- Сценарий MySQL: {name} ---")
-        table_name = f"test_{name.split('_', 1)}"
+        table_name = f"test_{name.split('_', 1)[1]}" 
         
         cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
         cursor.execute(config["schema"])

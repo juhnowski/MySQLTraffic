@@ -11,48 +11,55 @@
       pkgs = import nixpkgs { inherit system; };
       
       pythonEnv = pkgs.python3.withPackages (ps: [
-        ps.mysql-connector-python # Тот же драйвер, отлично работает и с оригинальным MySQL
+        ps.mysql-connector
       ]);
     in
     {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
-          pkgs.mysql      # Чистый дистрибутив MySQL Server
+          pkgs.cargo
+          pkgs.rustc
+          pkgs.mysql84
           pythonEnv
         ];
 
-        shellHook = ''
-          export MSL_DIR="$PWD/mysql_data"
+                shellHook = ''
+          # Разделяем папки: конфигурация в корне, данные — в изолированной папке
+          export MSL_DIR="$(pwd)/mysql_data"
+          export MSL_CONF="$(pwd)/my.cnf"
           export MSL_SOCKET="$MSL_DIR/mysql.sock"
           export MSL_PID="$MSL_DIR/mysql.pid"
-          export MSL_CONF="$MSL_DIR/my.cnf"
-          export PORT=3306
+          export PORT=3307
           
-          mkdir -p "$MSL_DIR"
-
-          # Генерируем конфигурацию my.cnf специально для MySQL 8.x/9.x
           if [ ! -f "$MSL_CONF" ]; then
-            echo "[Nix] Создание изолированной конфигурации MySQL..."
+            echo "[Nix] Создание изолированной конфигурации MySQL в корне..."
             cat <<EOF > "$MSL_CONF"
 [mysqld]
-user = ${builtins.getEnv "USER"}
 datadir = $MSL_DIR
 socket = $MSL_SOCKET
 pid-file = $MSL_PID
 port = $PORT
 bind-address = 127.0.0.1
-mysqlx = OFF # Отключаем X-Plugin для экономии ресурсов стенда
+mysqlx = OFF
 
-# Тюнинг InnoDB под замер сырых страниц данных
-innodb_file_per_table = 1          # Каждая таблица пишется в свой .ibd файл
-innodb_buffer_pool_size = 64M      # Минимальный буфер для быстрого вытеснения страниц на диск
-innodb_flush_log_at_trx_commit = 1 # Немедленный сброс транзакционных логов
-innodb_doublewrite = 0             # КРИТИЧНО: Отключаем двойную запись, чтобы блоки не дублировались в системных файлах
+ssl_ca = $MSL_DIR/ca.pem
+ssl_cert = $MSL_DIR/server-cert.pem
+ssl_key = $MSL_DIR/server-key.pem
+secure_file_priv = $MSL_DIR
+
+# Тюнинг под сбор сырых 16КБ блоков
+innodb_file_per_table = 1
+innodb_buffer_pool_size = 64M
+innodb_flush_log_at_trx_commit = 1
+innodb_doublewrite = 0
 innodb_stats_on_metadata = 0
 EOF
+          fi
 
-            echo "[Nix] Инициализация системного словаря данных MySQL..."
-            # Инициализируем БД в режиме insecure (без пароля для root)
+          # Инициализируем только если папка данных физически пуста или отсутствует
+          if [ ! -d "$MSL_DIR" ] || [ -z "$(ls -A "$MSL_DIR")" ]; then
+            echo "[Nix] Создание чистой папки данных и инициализация словаря..."
+            mkdir -p "$MSL_DIR"
             mysqld --defaults-file="$MSL_CONF" --initialize-insecure
           fi
 
@@ -60,13 +67,17 @@ EOF
           echo " Доступные команды MySQL-стенда:"
           echo "   start-mysql - Запустить локальный сервер MySQL"
           echo "   stop-mysql  - Остановить сервер MySQL"
-          echo "   run-bench   - Сгенерировать данные и собрать блоки (.ibd)"
+          echo "   run-bench   - Сгенерировать данные и собрать blocks (.ibd)"
+          echo "   run-entropy - Вычислить энтропию"
           echo "--------------------------------------------------------"
 
-          alias start-mysql="mysqld --defaults-file=\$MSL_CONF --daemonize"
+          alias start-mysql="mysqld --defaults-file=\$MSL_CONF > \$MSL_DIR/mysql.log 2>&1 &"
           alias stop-mysql="mysqladmin --socket=\$MSL_SOCKET -u root shutdown"
           alias run-bench="python collect_mysql_blocks.py"
+          alias run-entropy="cargo run --release --manifest-path=\$(pwd)/entropy_analyzer/Cargo.toml --"
         '';
+
+
       };
     };
 }

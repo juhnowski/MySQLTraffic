@@ -1,0 +1,4 @@
+mysql_data/
+mysql_bench_blocks/
+/my.cnf
+/entropy_analyzer/target/
