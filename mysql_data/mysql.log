@@ -7,3 +7,6 @@
 2026-05-25T19:32:13.991233Z 0 [Warning] [MY-010068] [Server] CA certificate /home/ilya/MySQLTraffic/mysql_data/ca.pem is self signed.
 2026-05-25T19:32:13.991362Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
 2026-05-25T19:32:14.053866Z 0 [System] [MY-010931] [Server] /nix/store/x6laiw890knxh2czg0qy0095aaad9y10-mysql-8.4.9/bin/mysqld: ready for connections. Version: '8.4.9'  socket: '/home/ilya/MySQLTraffic/mysql_data/mysql.sock'  port: 3307  Source distribution.
+2026-05-25T19:54:49.320201Z 10 [System] [MY-013172] [Server] Received SHUTDOWN from user root. Shutting down mysqld (Version: 8.4.9).
+2026-05-25T19:54:50.336308Z 0 [System] [MY-010910] [Server] /nix/store/x6laiw890knxh2czg0qy0095aaad9y10-mysql-8.4.9/bin/mysqld: Shutdown complete (mysqld 8.4.9)  Source distribution.
+2026-05-25T19:54:50.336327Z 0 [System] [MY-015016] [Server] MySQL Server - end.
